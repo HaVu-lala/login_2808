@@ -10,135 +10,164 @@ import web_2808.configs.DBConnectMySQL;
 import web_2808.dao.IUserDao;
 import web_2808.models.UserModel;
 
-public class UserDaoImpl extends DBConnectMySQL implements IUserDao{
+public class UserDaoImpl extends DBConnectMySQL implements IUserDao {
 
-	// thuc thi
-	// ke thua extends
-	
-	public Connection conn = null;
-	public PreparedStatement ps = null;
-	public ResultSet rs = null;
-	
-	@Override
-	public List<UserModel> findAll() {
-		// TODO Auto-generated method stub
-		String sql = "select * from users";
-		
-		List<UserModel> list = new ArrayList<>();	// Tao 1 list truyen du lieu
-		
-		try {
-			conn = super.getDatabaseConnection();	// ket noi database
-			ps = conn.prepareStatement(sql);
-			rs = ps.executeQuery();
-			
-			while (rs.next()) {	// next tung dong toi cuoi bang
-				list.add(
-						new UserModel(
-							rs.getInt("id"),
-							rs.getString("username"),
-							rs.getString("email"),
-							rs.getString("password"),
-							rs.getString("fullname"),
-							rs.getString("images")
-							)
-						);	// add vao
-			}
-			return list;
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		
-		return null;
-	}
-
-	@Override
-	public UserModel findById(int id) {
-		// TODO Auto-generated method stub
-		String sql = "SELECT * FROM users WHERE id = ?";
-	    try {
-	        conn = super.getDatabaseConnection();   // kết nối database
-	        ps = conn.prepareStatement(sql);
-	        ps.setInt(1, id);
-	        rs = ps.executeQuery();
-
-	        if (rs.next()) {
-	            return new UserModel(
-	                rs.getInt("id"),
-	                rs.getString("username"),
-	                rs.getString("email"),
-	                rs.getString("password"),
-	                rs.getString("fullname"),
-	                rs.getString("images")
-	            );
-	        }
-	    } catch (Exception e) {
-	        e.printStackTrace();
-	    }
-	    return null; // nếu không tìm thấy
-	}
-
-	public UserModel findByUsernameAndPassword(String username, String password) {
-        String sql = "SELECT * FROM users WHERE username = ? AND password = ?";
-        try {
-            conn = super.getDatabaseConnection();   // dùng DBConnectMySQL như các hàm khác
-            ps = conn.prepareStatement(sql);
-            ps.setString(1, username);
-            ps.setString(2, password);
-
-            rs = ps.executeQuery();
-            if (rs.next()) {
-                return new UserModel(
-                    rs.getInt("id"),
-                    rs.getString("username"),
-                    rs.getString("email"),
-                    rs.getString("password"),
-                    rs.getString("fullname"),
-                    rs.getString("images")
-                );
+    @Override
+    public List<UserModel> findAll() {
+        String sql = "SELECT * FROM users";
+        List<UserModel> list = new ArrayList<>();
+        try (Connection conn = super.getDatabaseConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                list.add(mapRow(rs));
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return null; // không tìm thấy
+        return list; // trả list rỗng nếu lỗi
     }
-	
-	@Override
-	public void insert(UserModel user) {
-		// TODO Auto-generated method stub
-		String sql = "INSERT INTO users(id, username, email, password, fullname, images) VALUES (?, ?, ?, ?, ?, ?)";
-		
-		try {
-			conn = super.getDatabaseConnection();	// ket noi database
-			
-			ps = conn.prepareStatement(sql);	// nem cau sql vao cho thuc thi
-			
-			ps.setInt(1, user.getId());
-			ps.setString(2, user.getUsername());
-			ps.setString(3, user.getEmail());
-			ps.setString(4, user.getPassword());
-			ps.setString(5, user.getFullname());
-			ps.setString(6, user.getImages());
-			
-			ps.executeUpdate();
-			
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		
-	}
-	
-	public static void main(String[] args) {
-		UserDaoImpl userDao = new UserDaoImpl();
-		
-		userDao.insert(new UserModel(2, "Truong", "truongnv@gmail.com", "123", "nguyen", ""));
-		
-		List<UserModel> list = userDao.findAll();
-		
-		for (UserModel user : list) {
-			System.out.println(user);
-		}
-	}
-	
-	
 
+    @Override
+    public UserModel findById(int id) {
+        String sql = "SELECT * FROM users WHERE id = ?";
+        try (Connection conn = super.getDatabaseConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return mapRow(rs);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    // LOGIN
+    @Override
+    public UserModel findByUsernameAndPassword(String username, String password) {
+        String sql = "SELECT * FROM users WHERE username = ? AND password = ?";
+        try (Connection conn = super.getDatabaseConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, username);
+            ps.setString(2, password);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return mapRow(rs);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    // REGISTER - CHECKS
+    @Override
+    public boolean existsByUsername(String username) {
+        String sql = "SELECT 1 FROM users WHERE username = ? LIMIT 1";
+        try (Connection conn = super.getDatabaseConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, username);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    @Override
+    public boolean existsByEmail(String email) {
+        String sql = "SELECT 1 FROM users WHERE email = ? LIMIT 1";
+        try (Connection conn = super.getDatabaseConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    @Override
+    public boolean existsByPhone(String phone) {
+        String sql = "SELECT 1 FROM users WHERE phone = ? LIMIT 1";
+        try (Connection conn = super.getDatabaseConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, phone);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    // REGISTER - INSERT
+    @Override
+    public boolean insert(UserModel user) {
+        // Nếu DB đã DEFAULT roleid=1, bạn có thể bỏ roleid khỏi câu SQL.
+        String sql = "INSERT INTO users (email, username, fullname, password, avatar, roleid, phone) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        try (Connection conn = super.getDatabaseConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, user.getEmail());
+            ps.setString(2, user.getUserName());
+            ps.setString(3, user.getFullName());
+            ps.setString(4, user.getPassWord());
+
+            // avatar
+            if (user.getAvatar() == null || user.getAvatar().isBlank()) {
+                ps.setNull(5, java.sql.Types.VARCHAR);
+            } else {
+                ps.setString(5, user.getAvatar());
+            }
+
+            // roleid: đảm bảo 1..5 (USER=1) nếu có FK
+            int role = user.getRoleid() <= 0 ? 1 : user.getRoleid();
+            ps.setInt(6, role);
+
+            // phone
+            if (user.getPhone() == null || user.getPhone().isBlank()) {
+                ps.setNull(7, java.sql.Types.VARCHAR);
+            } else {
+                ps.setString(7, user.getPhone());
+            }
+
+            int rows = ps.executeUpdate();
+            return rows > 0;
+
+        } catch (java.sql.SQLException e) {
+            // Bắt bệnh nhanh:
+            // 1062 = duplicate key (trùng email/username)
+            // 1452 = cannot add or update child row (FK roleid sai)
+            // 1364 = field doesn't have a default value (NOT NULL thiếu DEFAULT)
+            // 1054 = unknown column (sai tên cột)
+            System.err.println("[DAO][INSERT FAIL] sqlState=" + e.getSQLState() + ", code=" + e.getErrorCode());
+            e.printStackTrace();
+            return false;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // Helper: map ResultSet -> UserModel (đồng bộ field & tên cột)
+    private UserModel mapRow(ResultSet rs) throws Exception {
+        return new UserModel(
+            rs.getInt("id"),
+            rs.getString("email"),
+            rs.getString("username"),
+            rs.getString("fullname"),
+            rs.getString("password"),
+            rs.getString("avatar"),
+            rs.getInt("roleid"),
+            rs.getString("phone"),
+            rs.getDate("createddate") // java.sql.Date
+        );
+    }
 }

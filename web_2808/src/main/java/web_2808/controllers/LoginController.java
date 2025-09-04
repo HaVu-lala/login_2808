@@ -15,43 +15,48 @@ import web_2808.services.impl.UserServiceImpl;
 
 @WebServlet(urlPatterns = {"/login"})
 public class LoginController extends HttpServlet {
+    private static final long serialVersionUID = 1L;
 
-    /**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
-	private UserService userService = new UserServiceImpl();
+    private final UserService userService = new UserServiceImpl();
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) 
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
-        // Chuyển hướng sang trang login.jsp
         req.getRequestDispatcher("/views/login.jsp").forward(req, resp);
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) 
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
-        
+
+        req.setCharacterEncoding("UTF-8");
+        resp.setCharacterEncoding("UTF-8");
+
         String username = req.getParameter("username");
         String password = req.getParameter("password");
+
+        // trim để tránh "truong " ≠ "truong"
+        username = (username == null) ? null : username.trim();
+        password = (password == null) ? null : password.trim();
+
+        System.out.println("[LOGIN] input u=" + username + ", p=" + password); // debug
+
+        if (username == null || username.isEmpty() || password == null || password.isEmpty()) {
+            req.setAttribute("error", "Vui lòng nhập đủ tài khoản và mật khẩu!");
+            req.getRequestDispatcher("/views/error.jsp").forward(req, resp);
+            return;
+        }
 
         UserModel user = userService.login(username, password);
 
         if (user != null) {
-            // Lưu user vào session
             HttpSession session = req.getSession();
             session.setAttribute("account", user);
 
-            // Đăng nhập thành công → chuyển về trang chủ
-            //resp.sendRedirect(req.getContextPath() + "/home");
-            req.setAttribute("username", user.getUsername());
+            req.setAttribute("username", user.getUserName());
             req.getRequestDispatcher("/views/success.jsp").forward(req, resp);
-            
         } else {
-            // Sai username/password → quay lại login.jsp kèm thông báo
             req.setAttribute("error", "Tên đăng nhập hoặc mật khẩu không đúng!");
-            //req.getRequestDispatcher("/views/login.jsp").forward(req, resp);
             req.getRequestDispatcher("/views/error.jsp").forward(req, resp);
         }
     }
